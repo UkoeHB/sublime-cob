@@ -10,8 +10,6 @@ variables:
   # include a word boundary at the end to ensure all possible characters are consumed, to prevent catastrophic backtracking
   identifier: '(?:(?:{{non_raw_ident}})\b)'
   type_identifier: '\b(?:_*[[:upper:]][[:alnum:]_]*)\b'
-  macro_identifier: '{{identifier}}\!'
-  macro_instruction_identifier: '{{type_identifier}}\!'
   constant: '\$(?:{{identifier}}::)*{{identifier}}'
   constant_instruction: '\$(?:{{identifier}}::)*{{type_identifier}}'
 contexts:
@@ -22,7 +20,7 @@ contexts:
   ignored:
     - include: comments
     # All valid characters.
-    - match: "[^A-Za-z0-9_ \n;,\\{\\}\\[\\]\\(\\)<>\\-+=$#@!%*?\\:\\\\/.\"']"
+    - match: "[^A-Za-z0-9_ \n;,\\{\\}\\[\\]\\(\\)<>\\-+=$#@!%*?^\\:\\\\/.\"']"
       scope: invalid.illegal.char.cob
   comments:
     - match: '/\*'
@@ -43,9 +41,7 @@ contexts:
   sections:
     - include: manifest_section
     - include: import_section
-    - include: using_section
     - include: defs_section
-    - include: specs_section
     - include: commands_section
     - include: scenes_section
 
@@ -68,15 +64,6 @@ contexts:
         - include: string
         - include: sections
 
-  using_section:
-    - match: '^#using\b'
-      scope: keyword.other.cob
-      set:
-        - include: ignored
-        - include: as_alias
-        - include: type_identifiers
-        - include: sections
-
   defs_section:
     - match: '^#defs\b'
       scope: keyword.other.cob
@@ -84,8 +71,6 @@ contexts:
         - include: ignored
         - include: defs_section-constant
         - include: defs_section-scene_macro
-        - include: defs_section-instruction_macro  # Before data_macro for correct macro name filtering.
-        - include: defs_section-data_macro
         - include: sections
   defs_section-constant:
     - match: '(?:\$)?{{constant}}'
@@ -95,66 +80,17 @@ contexts:
         - match: '=\s*'
           scope: keyword.operator.cob
           set: pastable_value
-        - match: '\{'
-          scope: punctuation.section.block.start.cob
-          set: defs_section-constant
-    - match: '\}'
-      scope: punctuation.section.block.end.cob
-      pop: true
-  defs_section-data_macro:
-    - match: '({{macro_identifier}})([\(])'
-      captures:
-        1: entity.name.cob
-        2: punctuation.section.group.begin.cob
-      push:
-        - include: defs_section-macro-nesting
-        - match: '(\))\s*(=)\s*'
-          captures:
-            1: punctuation.section.group.end.cob
-            2: keyword.operator.cob
-          set: pastable_value
-  defs_section-instruction_macro:
-    - match: '({{macro_instruction_identifier}})([\(])'
-      captures:
-        1: entity.name.cob
-        2: punctuation.section.group.begin.cob
-      push:
-        - include: defs_section-macro-nesting
-        - match: '(\))\s*(=)\s*'
-          captures:
-            1: punctuation.section.group.end.cob
-            2: keyword.operator.cob
-          set: pastable_value
-  defs_section-macro-parameter:
-    - match: "(?:')?{{identifier}}(?:')?"
-      scope: variable.parameter.cob
-    - match: "(?:\\.\\.)"  # Symbol for 'grab all'.
-      scope: variable.parameter.cob
-  defs_section-macro-nesting:
-    - include: ignored
-    - include: defs_section-macro-parameter
-    - match: '\{'
-      scope: punctuation.section.group.begin.cob
-      push:
-        - match: '\}'
-          scope: punctuation.section.group.end.cob
-          pop: true
-        - include: defs_section-macro-nesting
-    - match: '\s*=\s*'
-      scope: keyword.operator.cob
-      push: pastable_value
   defs_section-scene_macro:
-    - match: '(\+{{identifier}})([\(])'
+    - match: '(\+{{identifier}})'
       captures:
         1: entity.name.cob
         2: punctuation.section.group.begin.cob
       push:
-        - include: defs_section-macro-nesting
-        - match: '(\))\s*(=)\s*'
+        - match: '\s*(=)\s*'
           captures:
             1: punctuation.section.group.end.cob
             2: keyword.operator.cob
-          set: pastable_value
+          set: scene_macro_content-single
 
   commands_section:
     - match: '^#commands\b'
@@ -171,18 +107,15 @@ contexts:
   scenes_section-scene:
     - include: ignored
     - include: string
-    - include: macro_instruction_call  # Before struct values for matching correctly.
     - include: macro_scene_call
     - include: struct_value
-    - include: constant_instruction
 
 
 
   pastable_value:
     - include: ignored
     - match: '\s*'
-    - include: macro_call-single
-    - include: macro_paste_brackets
+    - include: value_group-single
     - include: struct_value-single
     - include: map_value-single
     - include: array_value-single
@@ -192,68 +125,61 @@ contexts:
     - match: ''
       pop: true
 
-  macro_call-single:
-    - match: '(?:{{identifier}}::)*{{macro_identifier}}'
-      scope: support.macro.cob
-      set: macro_call-inner
-    - match: '(?:{{identifier}}::)*{{macro_instruction_identifier}}'
-      scope: support.macro.cob
-      set: macro_call-inner
-    - match: '\+(?:{{identifier}}::)*{{identifier}}'
-      scope: support.macro.cob
-      set: macro_call-inner
-  macro_call:
-    - match: '(?:{{identifier}}::)*{{macro_identifier}}'
-      scope: support.macro.cob
-      push: macro_call-inner
-    - include: macro_instruction_call
-  macro_instruction_call:
-    - match: '(?:{{identifier}}::)*{{macro_instruction_identifier}}'
-      scope: support.macro.cob
-      push: macro_call-inner
   macro_scene_call:
     - match: '\+(?:{{identifier}}::)*{{identifier}}'
       scope: support.macro.cob
-      push: macro_call-inner
-  macro_call-inner:
+      push: macro_scene_call-inner
+  macro_scene_call-inner:
     - match: '\s*'
       scope: invalid.illegal.cob
-    - match: '\('
+    - match: '\{'
       set:
         - include: ignored
-        - include: macro_call
+        - include: string
+        - include: macro_scene_call
         - include: struct_value
-        - include: map_value
-        - include: array_value
-        - include: field_identifiers
-        - include: nested_macro_identifiers
-        - include: macro_param_marker
-        - include: constants
-        - include: values
         # Don't include tuple_value, because tuples can't be placed anywhere.
-        - match: '\('
+        - match: '\{'
           scope: invalid.illegal.cob
-        - match: '\)'
+        - match: '\}'
           pop: true
 
-  macro_paste_brackets:
+  scene_macro_content-single:
     - match: '\\'
       scope: punctuation.section.block.begin.cob
-      set: macro_paste_brackets-inner
-  macro_paste_brackets-inner:
+      set: scene_macro_content-inner
+  scene_macro_content:
+    - match: '\\'
+      scope: punctuation.section.block.begin.cob
+      push: scene_macro_content-inner
+  scene_macro_content-inner:
     - match: '\\'
       scope: punctuation.section.block.end.cob
       pop: true
     - include: ignored
-    - include: macro_call
-    - include: macro_instruction_call
+    - include: string
+    - include: macro_scene_call
+    - include: struct_value
+
+  value_group-single:
+    - match: '\\'
+      scope: punctuation.section.block.begin.cob
+      set: value_group-inner
+  value_group:
+    - match: '\\'
+      scope: punctuation.section.block.begin.cob
+      push: value_group-inner
+  value_group-inner:
+    - match: '\\'
+      scope: punctuation.section.block.end.cob
+      pop: true
+    - include: ignored
     - include: macro_scene_call
     - include: struct_value
     - include: map_value
     - include: array_value
     - include: type_identifiers
     - include: field_identifiers
-    - include: macro_param_marker
     - include: constants
     - include: values
     # Don't include tuple_value here, because tuples are not valid when standing alone inside things.
@@ -284,7 +210,6 @@ contexts:
         - include: generic_struct_args
         - include: type_identifiers
         - include: lang_types
-        - include: macro_param_marker  # For generics in macros.
         - match: '>'
           pop: true
 
@@ -301,14 +226,12 @@ contexts:
       scope: punctuation.section.block.end.cob
       pop: true
     - include: ignored
-    - include: macro_call
     - include: struct_value
     - include: map_value
     - include: array_value
     - include: tuple_value
     - include: type_identifiers
     - include: field_identifiers
-    - include: macro_param_marker
     - include: constants
     - include: values
 
@@ -325,14 +248,11 @@ contexts:
       scope: punctuation.section.array.end.cob
       pop: true
     - include: ignored
-    - include: macro_call
     - include: struct_value
     - include: map_value
     - include: array_value
     - include: tuple_value
     - include: type_identifiers
-    # Don't include field_identifiers here, because arrays don't have parameters.
-    - include: macro_param_marker
     - include: constants
     - include: values
 
@@ -349,14 +269,11 @@ contexts:
       scope: punctuation.section.array.end.cob
       pop: true
     - include: ignored
-    - include: macro_call
     - include: struct_value
     - include: map_value
     - include: array_value
     - include: tuple_value
     - include: type_identifiers
-    # Don't include field_identifiers here, because tuples don't have parameters.
-    - include: macro_param_marker
     - include: constants
     - include: values
 
@@ -367,11 +284,6 @@ contexts:
   constants:
     - match: '{{constant}}'
       scope: variable.parameter.cob
-    - match: '{{constant_instruction}}'
-      scope: variable.parameter.cob
-  constant_instruction:
-    - match: '{{constant_instruction}}'
-      scope: variable.parameter.cob
 
 
   type_identifiers:
@@ -380,23 +292,6 @@ contexts:
 
   field_identifiers:
     - match: '{{identifier}}\s*:'
-
-  nested_macro_identifiers:
-    - match: '{{identifier}}'
-
-  macro_param_marker:
-    - match: '@{{identifier}}(?:[.]{{identifier}})*'
-      scope: variable.parameter.cob
-    - match: (?:\.\.)(?:\'){{identifier}}(?:\')(?:[.](?:\'){{identifier}}(?:\'))*
-      scope: variable.parameter.cob
-    - match: '(?:\.\.){{identifier}}(?:[.]{{identifier}})*'
-      scope: variable.parameter.cob
-    - match: (\.\.)(\*)?
-      captures:
-        1: variable.parameter.cob
-        2: keyword.operator.cob
-    - match: '\?{{identifier}}(?:[.]{{identifier}})*'
-      scope: variable.parameter.cob
 
   import_self:
     - match: \b(self)\b
