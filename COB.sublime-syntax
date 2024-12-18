@@ -87,9 +87,7 @@ contexts:
         2: punctuation.section.group.begin.cob
       push:
         - match: '\s*(=)\s*'
-          captures:
-            1: punctuation.section.group.end.cob
-            2: keyword.operator.cob
+          scope: keyword.operator.cob
           set: scene_macro_content-single
 
   commands_section:

@@ -1,5 +1,9 @@
 # Changelog
 
+## WIP
+
+- Fix `=` not being treated as keyword for scene macros.
+
 ## Tag 0.0.2
 
 - Cleanup speculative design for data and instruction macros.
