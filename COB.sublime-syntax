@@ -20,7 +20,7 @@ contexts:
   ignored:
     - include: comments
     # All valid characters.
-    - match: "[^A-Za-z0-9_ \n;,\\{\\}\\[\\]\\(\\)<>\\-+=$#@!%*?^\\:\\\\/.\"']"
+    - match: "[^A-Za-z0-9_ \r\n;,\\{\\}\\[\\]\\(\\)<>\\-+=$#@!%*?^\\:\\\\/.\"']"
       scope: invalid.illegal.char.cob
   comments:
     - match: '/\*'

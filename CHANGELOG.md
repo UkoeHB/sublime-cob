@@ -3,6 +3,7 @@
 ## WIP
 
 - Fix `=` not being treated as keyword for scene macros.
+- Add `\r` as valid character.
 
 ## Tag 0.0.2
 
