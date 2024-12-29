@@ -1,6 +1,6 @@
 # Changelog
 
-## WIP
+## Tag 0.0.3
 
 - Fix `=` not being treated as keyword for scene macros.
 - Add `\r` as valid character.
