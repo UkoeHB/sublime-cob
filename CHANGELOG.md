@@ -4,6 +4,7 @@
 
 - Fix `=` not being treated as keyword for scene macros.
 - Add `\r` as valid character.
+- Add `fr` builtin type.
 
 ## Tag 0.0.2
 

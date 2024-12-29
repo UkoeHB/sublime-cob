@@ -336,7 +336,7 @@ contexts:
             )?       # make exponent optional
           )?         # make decimal portion optional
           (?:
-            px|%|vw|vh|vmin|vmax     # CUSTOM: Val notation
+            px|%|vw|vh|vmin|vmax|fr     # CUSTOM: Val/GridVal notation
           )?
         )
       scope: constant.numeric.cob
