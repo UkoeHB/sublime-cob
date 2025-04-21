@@ -3,6 +3,7 @@
 name: COB
 file_extensions:
   - cob
+  - cobweb
 version: 1
 scope: source.cob
 variables:

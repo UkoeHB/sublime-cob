@@ -1,5 +1,9 @@
 # Changelog
 
+## Tag 0.0.4
+
+- Add `.cobweb` file extension.
+
 ## Tag 0.0.3
 
 - Fix `=` not being treated as keyword for scene macros.
